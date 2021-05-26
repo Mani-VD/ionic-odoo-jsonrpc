@@ -1,6 +1,8 @@
 import { Injectable, Inject } from "@angular/core"
 //import { HttpClient, HttpHeaders } from '@angular/common/http';
 import {HTTP} from '@ionic-native/http/ngx';
+import { AlertController } from '@ionic/angular';
+import{Router} from '@angular/router';
 // class Cookies { // cookies doesn't work with Android default browser / Ionic
 
 //     private session_id: string = null;
@@ -31,11 +33,11 @@ export class OdooRPCService {
    // private cookies: Cookies;
     private uniq_id_counter: number = 0;
     private shouldManageSessionId: boolean = false; // try without first
-    private context: Object = JSON.parse(localStorage.getItem("user_context")) || {"lang": "en_US"};
+    //private context: Object = JSON.parse(localStorage.getItem("user_context")) || {"lang": "en_US"};
     //private headers: HttpHeaders;
 
     constructor(
-        private http: HTTP) {
+        private http: HTTP,private ialert: AlertController,private router:Router) {
        // this.cookies = new Cookies();
     }
     headers:any;
@@ -59,52 +61,74 @@ export class OdooRPCService {
 
     private handleOdooErrors(response: any) {
         var data=response.data,parsed_data;
-        if (!response.error) {
+        
             parsed_data=JSON.parse(data);
+            if(parsed_data.hasOwnProperty('result')){
             return parsed_data.result;
-        }
-
-        let error = response.error;
-        let errorObj = {
-            title: "    ",
-            message: "",
-            fullTrace: error
-        };
-
-        if (error.code === 200 && error.message === "Odoo Server Error" && error.data.name === "werkzeug.exceptions.NotFound") {
-            errorObj.title = "page_not_found";
-            errorObj.message = "HTTP Error";
-        // } else if ( (error.code === 100 && error.message === "Odoo Session Expired") || // v8
-        //             (error.code === 300 && error.message === "OpenERP WebClient Error" && error.data.debug.match("SessionExpiredException")) // v7
-        //         ) {
-        //             errorObj.title = "session_expired";
-        //             this.cookies.delete_sessionId();
-        // } else if ( (error.message === "Odoo Server Error" && /FATAL:  database "(.+)" does not exist/.test(error.data.message))) {
-            errorObj.title = "database_not_found";
-            errorObj.message = error.data.message;
-        } else if ( (error.data.name === "openerp.exceptions.AccessError")) {
-            errorObj.title = "AccessError";
-            errorObj.message = error.data.message;
-        } else {
-            let split = ("" + error.data.fault_code).split("\n")[0].split(" -- ");
-            if (split.length > 1) {
-                error.type = split.shift();
-                error.data.fault_code = error.data.fault_code.substr(error.type.length + 4);
             }
-
-            if (error.code === 200 && error.type) {
-                errorObj.title = error.type;
-                errorObj.message = error.data.fault_code.replace(/\n/g, "<br />");
-            } else {
-                errorObj.title = error.message;
-                errorObj.message = error.data.debug.replace(/\n/g, "<br />");
-            }
+        if(parsed_data.hasOwnProperty('error')){
+            console.log('Error',parsed_data.error);
+           
+//               alert('Oops! Your Odoo Session Has Expired.Login Again...');
+//               this.logout();
+            //return parsed_data.error;
         }
-        return Promise.reject(errorObj);
+        
+
+//        // let error = response.error;
+//         let errorObj = {
+//             title: "    ",
+//             message: "",
+//             fullTrace: error
+//         };
+
+//         if (error.code === 200 && error.message === "Odoo Server Error" && error.data.name === "werkzeug.exceptions.NotFound") {
+//             errorObj.title = "page_not_found";
+//             errorObj.message = "HTTP Error";
+//         // } else if ( (error.code === 100 && error.message === "Odoo Session Expired") || // v8
+//         //             (error.code === 300 && error.message === "OpenERP WebClient Error" && error.data.debug.match("SessionExpiredException")) // v7
+//         //         ) {
+//         //             errorObj.title = "session_expired";
+//         //             this.cookies.delete_sessionId();
+//         // } else if ( (error.message === "Odoo Server Error" && /FATAL:  database "(.+)" does not exist/.test(error.data.message))) {
+//             errorObj.title = "database_not_found";
+//             errorObj.message = error.data.message;
+//         } else if ( (error.data.name === "openerp.exceptions.AccessError")) {
+//             errorObj.title = "AccessError";
+//             errorObj.message = error.data.message;
+//         } else {
+//             let split = ("" + error.data.fault_code).split("\n")[0].split(" -- ");
+//             if (split.length > 1) {
+//                 error.type = split.shift();
+//                 error.data.fault_code = error.data.fault_code.substr(error.type.length + 4);
+//             }
+
+//             if (error.code === 200 && error.type) {
+//                 errorObj.title = error.type;
+//                 errorObj.message = error.data.fault_code.replace(/\n/g, "<br />");
+//             } else {
+//                 errorObj.title = error.message;
+//                 errorObj.message = error.data.debug.replace(/\n/g, "<br />");
+//             }
+//         }
+       // return Promise.reject(errorObj);
     }
 
-    private handleHttpErrors(error: any) {
-        return Promise.reject(error.message || error);
+    private async handleHttpErrors(error: any) {
+        console.log(error);
+        var ialert=AlertController();
+        const alert = await this.ialert.create({
+      header: 'Oops!',
+      message: 'An error occured while trying to connect your server. Either server is down or your Network connection is down. Try again...',
+      buttons: ['OK']
+    });
+        this.router.navigate(['../app/home']);
+    await alert.present();
+        //alert("An error occured while trying to connect your server. Either server is down or your Network connection is down. Try again...");
+        //return Promise.reject(error.message || error);
+    //console.log(this.ialert);
+    //return alert.present();
+    return false;
     }
 
     public init(configs: any) {
@@ -195,22 +219,22 @@ export class OdooRPCService {
             fields: fields,
             limit: limit,
             offset: offset,
-            context: context || this.context
+            context: context 
         };
         return this.sendRequest("/web/dataset/search_read", params);
     }
 
-    public updateContext(context: any) {
-        localStorage.setItem("user_context", JSON.stringify(context));
-        let args = [[(<any>this.context).uid], context];
-        this.call("res.users", "write", args, {})
-            .then(()=>this.context = context)
-            .catch((err: any) => this.context = context);
-    }
+//     public updateContext(context: any) {
+//         localStorage.setItem("user_context", JSON.stringify(context));
+//         let args = [[(<any>this.context).uid], context];
+//         this.call("res.users", "write", args, {})
+//             .then(()=>this.context = context)
+//             .catch((err: any) => this.context = context);
+//     }
 
-    public getContext() {
-        return this.context;
-    }
+//     public getContext() {
+//         return this.context;
+//     }
 
     public getServer() {
         return this.odoo_server;
@@ -220,7 +244,7 @@ export class OdooRPCService {
 
         kwargs = kwargs || {};
         kwargs.context = kwargs.context || {};
-        (<any>Object).assign(kwargs.context, this.context);
+        (<any>Object).assign(kwargs.context, {});
 
         let params = {
             model: model,

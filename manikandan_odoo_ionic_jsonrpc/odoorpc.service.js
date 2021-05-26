@@ -13,6 +13,8 @@ var __param = (this && this.__param) || function (paramIndex, decorator) {
 import { Injectable, Inject } from "@angular/core";
 import { HttpClient, HttpHeaders } from '@angular/common/http';
 import {HTTP} from '@ionic-native/http/ngx';
+import { AlertController } from '@ionic/angular';
+import{Router} from '@angular/router';
 // var Cookies = /** @class */ (function () {
 //     function Cookies() {
 //         this.session_id = null;
@@ -39,7 +41,7 @@ var OdooRPCService = /** @class */ (function () {
         this.http = http;
         //this.uniq_id_counter = 0;
         //this.shouldManageSessionId = false; // try without first
-        this.context = JSON.parse(localStorage.getItem("user_context")) || { "lang": "en_US" };
+       // this.context = JSON.parse(localStorage.getItem("user_context")) || { "lang": "en_US" };
         //this.cookies = new Cookies();
     }
     OdooRPCService.prototype.buildRequest = function (url, params) {
@@ -55,54 +57,70 @@ var OdooRPCService = /** @class */ (function () {
         };
     };
     OdooRPCService.prototype.handleOdooErrors = function (response) {
-        var data=response.data,parsed_data;
-        if (!response.error) {
+         var data=response.data,parsed_data;
+        
             parsed_data=JSON.parse(data);
+            if(parsed_data.hasOwnProperty('result')){
             return parsed_data.result;
+            }
+        if(parsed_data.hasOwnProperty('error')){
+            console.log('Error',parsed_data.error);
+            return parsed_data.error;
         }
-        var error = response.error;
-        var errorObj = {
-            title: "    ",
-            message: "",
-            fullTrace: error
         };
-        if (error.code === 200 && error.message === "Odoo Server Error" && error.data.name === "werkzeug.exceptions.NotFound") {
-            errorObj.title = "page_not_found";
-            errorObj.message = "HTTP Error";
-        }
-        // else if ((error.code === 100 && error.message === "Odoo Session Expired") || // v8
-        //     (error.code === 300 && error.message === "OpenERP WebClient Error" && error.data.debug.match("SessionExpiredException")) // v7
-        // ) {
-        //     errorObj.title = "session_expired";
-        //     this.cookies.delete_sessionId();
-        // }
-        else if ((error.message === "Odoo Server Error" && /FATAL:  database "(.+)" does not exist/.test(error.data.message))) {
-            errorObj.title = "database_not_found";
-            errorObj.message = error.data.message;
-        }
-        else if ((error.data.name === "openerp.exceptions.AccessError")) {
-            errorObj.title = "AccessError";
-            errorObj.message = error.data.message;
-        }
-        else {
-            var split = ("" + error.data.fault_code).split("\n")[0].split(" -- ");
-            if (split.length > 1) {
-                error.type = split.shift();
-                error.data.fault_code = error.data.fault_code.substr(error.type.length + 4);
-            }
-            if (error.code === 200 && error.type) {
-                errorObj.title = error.type;
-                errorObj.message = error.data.fault_code.replace(/\n/g, "<br />");
-            }
-            else {
-                errorObj.title = error.message;
-                errorObj.message = error.data.debug.replace(/\n/g, "<br />");
-            }
-        }
-        return Promise.reject(errorObj);
-    };
-    OdooRPCService.prototype.handleHttpErrors = function (error) {
-        return Promise.reject(error.message || error);
+//         var error = response.error;
+//         var errorObj = {
+//             title: "    ",
+//             message: "",
+//             fullTrace: error
+//         };
+//         if (error.code === 200 && error.message === "Odoo Server Error" && error.data.name === "werkzeug.exceptions.NotFound") {
+//             errorObj.title = "page_not_found";
+//             errorObj.message = "HTTP Error";
+//         }
+//         // else if ((error.code === 100 && error.message === "Odoo Session Expired") || // v8
+//         //     (error.code === 300 && error.message === "OpenERP WebClient Error" && error.data.debug.match("SessionExpiredException")) // v7
+//         // ) {
+//         //     errorObj.title = "session_expired";
+//         //     this.cookies.delete_sessionId();
+//         // }
+//         else if ((error.message === "Odoo Server Error" && /FATAL:  database "(.+)" does not exist/.test(error.data.message))) {
+//             errorObj.title = "database_not_found";
+//             errorObj.message = error.data.message;
+//         }
+//         else if ((error.data.name === "openerp.exceptions.AccessError")) {
+//             errorObj.title = "AccessError";
+//             errorObj.message = error.data.message;
+//         }
+//         else {
+//             var split = ("" + error.data.fault_code).split("\n")[0].split(" -- ");
+//             if (split.length > 1) {
+//                 error.type = split.shift();
+//                 error.data.fault_code = error.data.fault_code.substr(error.type.length + 4);
+//             }
+//             if (error.code === 200 && error.type) {
+//                 errorObj.title = error.type;
+//                 errorObj.message = error.data.fault_code.replace(/\n/g, "<br />");
+//             }
+//             else {
+//                 errorObj.title = error.message;
+//                 errorObj.message = error.data.debug.replace(/\n/g, "<br />");
+//             }
+//         }
+//         return Promise.reject(errorObj);
+    
+    OdooRPCService.prototype.handleHttpErrors = async function (error) {
+        var ialert=new AlertController();//router=new Router();
+        const alert = await ialert.create({
+      header: 'Oops!',
+      message: 'An error occured while trying to connect your server. Either server is down or your Network connection is down. Try again...',
+      buttons: ['OK']
+    });
+        
+    await alert.present();
+   
+        return false;
+ 
     };
     OdooRPCService.prototype.init = function (configs) {
         this.odoo_server = configs.odoo_server;
@@ -134,7 +152,7 @@ var OdooRPCService = /** @class */ (function () {
             "login": login,
             "password": password
         };
-        var $this = this;
+       // var $this = this;
         return this.sendRequest("/web/session/authenticate", params).then(function (result) {
             // if (!result.uid) {
             //     $this.cookies.delete_sessionId();
@@ -144,8 +162,8 @@ var OdooRPCService = /** @class */ (function () {
             //         fullTrace: result
             //     });
             // }
-            $this.context = result.user_context;
-            localStorage.setItem("user_context", JSON.stringify($this.context));
+           // $this.context = result.user_context;
+            //localStorage.setItem("user_context", JSON.stringify($this.context));
             //$this.cookies.set_sessionId(result.session_id);
             return result;
         });
@@ -186,21 +204,21 @@ var OdooRPCService = /** @class */ (function () {
             fields: fields,
             limit: limit,
             offset: offset,
-            context: context || this.context
+           context: context
         };
         return this.sendRequest("/web/dataset/search_read", params);
     };
-    OdooRPCService.prototype.updateContext = function (context) {
-        var _this = this;
-        localStorage.setItem("user_context", JSON.stringify(context));
-        var args = [[this.context.uid], context];
-        this.call("res.users", "write", args, {})
-            .then(function () { return _this.context = context; })
-            .catch(function (err) { return _this.context = context; });
-    };
-    OdooRPCService.prototype.getContext = function () {
-        return this.context;
-    };
+//     OdooRPCService.prototype.updateContext = function (context) {
+//         var _this = this;
+//         //localStorage.setItem("user_context", JSON.stringify(context));
+//         var args = [[this.context.uid], context];
+//         this.call("res.users", "write", args, {})
+//             .then(function () { return _this.context = context; })
+//             .catch(function (err) { return _this.context = context; });
+//     };
+//     OdooRPCService.prototype.getContext = function () {
+//         return this.context;
+//     };
     OdooRPCService.prototype.getServer = function () {
         return this.odoo_server;
     };
