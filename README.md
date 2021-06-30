@@ -10,7 +10,7 @@ constructor(private odoo:OdooRPCService){}<br/><br/>
 commonly used methods<br/>
 login(db,username,password) <br/>
 searchRead(model_name,domain,fields,limit,offset,context)<br/>
-call(model_name,method_name,args,kw_args)<br/>
+call(model_name,method_name,args,kw_args)
 
 
 
